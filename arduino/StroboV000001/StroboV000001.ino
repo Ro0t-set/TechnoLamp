@@ -1,12 +1,18 @@
  #define LOG_OUT 1 // use the log output function
  #define FHT_N 256 // set to 256 point fht
- #define MIN_RANGE  2
- #define MAX_RANGE  6
+ #define MIN_BASS_RANGE  2
+ #define MAX_BASS_RANGE  4
+
+ #define MIN_MED_RANGE  7
+ #define MAX_MED_RANGE  10
  
  #include <math.h>
  #include <FHT.h> // include the library
  unsigned long number_of_cicle;
- int medium_value;
+ int medium_bass_value;
+ int medium_med_value;
+ int last_volume_bass = 0;
+ int last_volume_med = 0;
  void setup() {
    Serial.begin(115200); // use the serial port
    TIMSK0 = 0; // turn off timer0 for lower jitter
@@ -14,10 +20,10 @@
    ADMUX = 0x40; // use adc0
    DIDR0 = 0x01; // turn off the digital input for adc0
    pinMode(13, OUTPUT);
+   pinMode(12, OUTPUT);
  }
  
  void loop() {
-  int last_volume = 0;
    while(1) { // reduces jitter
      cli();  // UDRE interrupt slows this way down on arduino1.0
      for (int i = 0 ; i < FHT_N ; i++) { // save 256 samples
@@ -37,28 +43,45 @@
      sei();
 
 
-     medium_value = 0;
+     medium_bass_value = 0;
+     medium_med_value = 0;
 
-     for(int i = MIN_RANGE; i< MAX_RANGE; i++){
-      medium_value = medium_value + fht_log_out[i];
+     for(int i = MIN_BASS_RANGE; i< MAX_BASS_RANGE; i++){
+      medium_bass_value = medium_bass_value + fht_log_out[i];
      }
-     medium_value = medium_value/(MAX_RANGE-MIN_RANGE);
+
+    for(int i = MIN_MED_RANGE; i< MAX_MED_RANGE; i++){
+      medium_med_value = medium_med_value + fht_log_out[i];
+    }
+     medium_bass_value = medium_bass_value/(MAX_BASS_RANGE-MIN_BASS_RANGE);
+
+     medium_med_value = medium_med_value/(MAX_BASS_RANGE-MIN_BASS_RANGE);
 
 
 
-     if ((medium_value - (1300/last_volume) )  > last_volume){
+     if ((medium_bass_value - (1700/last_volume_bass) )  > last_volume_bass){
       digitalWrite(13, HIGH);
-      
      }
+
+    if ((medium_med_value - (1300/last_volume_med) )  > last_volume_med){
+      digitalWrite(12, HIGH);
+    }
+
      if (number_of_cicle == 16){
-         if ((medium_value - (1000/last_volume) )  < last_volume){
+
+       if ((medium_bass_value - (1500/last_volume_bass) )  < last_volume_bass){
           digitalWrite(13, LOW);
+       }
+
+        if ((medium_bass_value - (1200/last_volume_med) )  < last_volume_med){
+          digitalWrite(12, LOW);
        }
       number_of_cicle=0;
      }
 
-     if ((number_of_cicle%10) == 0){
-      last_volume = medium_value;
+     if ((number_of_cicle%8) == 0){
+      last_volume_bass = medium_bass_value;
+      last_volume_med = medium_med_value;
       
       Serial.write(255); // send a start byte
       Serial.write(fht_log_out, FHT_N/2); // send out the data
