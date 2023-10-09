@@ -1,7 +1,7 @@
  #define LOG_OUT 1 // use the log output function
  #define FHT_N 256 // set to 256 point fht
  #define MIN_RANGE  2
- #define MAX_RANGE  8
+ #define MAX_RANGE  6
  
  #include <math.h>
  #include <FHT.h> // include the library
@@ -35,8 +35,7 @@
      fht_run(); // process the data in the fht
      fht_mag_log(); // take the output of the fht
      sei();
-     //Serial.write(255); // send a start byte
-     //Serial.write(fht_log_out, FHT_N/2); // send out the data
+
 
      medium_value = 0;
 
@@ -45,23 +44,24 @@
      }
      medium_value = medium_value/(MAX_RANGE-MIN_RANGE);
 
-     if ((medium_value - (1500/last_volume) )  > last_volume){
+
+
+     if ((medium_value - (1300/last_volume) )  > last_volume){
       digitalWrite(13, HIGH);
-      //Serial.println(log(medium_value));
-      //Serial.println(log(last_volume));
-      Serial.println("---------------");
-      for(int i = MIN_RANGE; i< MAX_RANGE; i++){
-      Serial.println(fht_log_out[i]);
-     }
       
      }
-     if (number_of_cicle > 10){
-      digitalWrite(13, LOW);
+     if (number_of_cicle == 16){
+         if ((medium_value - (1000/last_volume) )  < last_volume){
+          digitalWrite(13, LOW);
+       }
       number_of_cicle=0;
      }
 
-     if ((number_of_cicle%2) == 0){
+     if ((number_of_cicle%10) == 0){
       last_volume = medium_value;
+      
+      Serial.write(255); // send a start byte
+      Serial.write(fht_log_out, FHT_N/2); // send out the data
      }
 
      number_of_cicle++;
