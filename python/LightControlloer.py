@@ -1,5 +1,6 @@
 import tkinter as tk
 from enum import Enum
+import serial.tools.list_ports
 root = tk.Tk()
 tk.Entry(root, justify='center')
 root.geometry("400x300")
@@ -7,6 +8,20 @@ root.title("Light Controller")
 
 parameter = Enum('Frequence', ['BASS', 'MEDIUM', 'STATUS'])
 is_on = False
+
+
+def port_selected(event):
+    print("Selected Port: ", port.get())
+
+
+ports = serial.tools.list_ports.comports()
+
+#dropdown menu to select the port
+port = tk.StringVar(root)
+port.set(ports[0].device)
+port_menu = tk.OptionMenu(root, port, *ports, command=port_selected)
+port_menu.grid(row=0, column=2)
+
 
 
 def bass_slider_changed(value):
