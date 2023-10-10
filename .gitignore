@@ -3,6 +3,10 @@
 
 #libraries
 libraries/*
+libraries/
+
+#osx
+.DS_Store
 
 # Object files
 *.o
