@@ -6,6 +6,13 @@
 libraries/
 libraries/*
 
+
+#vscode file
+.vscode/*
+.vscode
+.vscode/
+
+
 #osx
 .DS_Store
 
