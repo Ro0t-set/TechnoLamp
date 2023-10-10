@@ -1,18 +1,25 @@
  #define LOG_OUT 1 // use the log output function
  #define FHT_N 256 // set to 256 point fht
  #define MIN_BASS_RANGE  2
- #define MAX_BASS_RANGE  4
+ #define MAX_BASS_RANGE  3
 
- #define MIN_MED_RANGE  7
- #define MAX_MED_RANGE  10
+ #define MIN_MED_RANGE  8
+ #define MAX_MED_RANGE  11
  
  #include <math.h>
  #include <FHT.h> // include the library
  unsigned long number_of_cicle;
+
+
+
  int medium_bass_value;
  int medium_med_value;
- int last_volume_bass = 0;
+ int last_volume_bass = 200;
  int last_volume_med = 0;
+
+ int bass_lower_bound = 70;
+ int bass_drop_rate = 2;
+
  void setup() {
    Serial.begin(115200); // use the serial port
    TIMSK0 = 0; // turn off timer0 for lower jitter
@@ -57,37 +64,41 @@
 
      medium_med_value = medium_med_value/(MAX_BASS_RANGE-MIN_BASS_RANGE);
 
+    
+    digitalWrite(13, LOW);
 
-
-     if ((medium_bass_value - (1700/last_volume_bass) )  > last_volume_bass){
+     
+    if (medium_bass_value > bass_lower_bound && (medium_bass_value - (1300/last_volume_bass) )  > last_volume_bass){
       digitalWrite(13, HIGH);
-     }
+      last_volume_bass = medium_bass_value;
+    }
 
     if ((medium_med_value - (1300/last_volume_med) )  > last_volume_med){
       digitalWrite(12, HIGH);
+      last_volume_med = medium_med_value;
     }
 
-     if (number_of_cicle == 16){
+      if(last_volume_bass > bass_lower_bound)
+        last_volume_bass-=bass_drop_rate;
+      last_volume_med-=2;
+    
 
-       if ((medium_bass_value - (1500/last_volume_bass) )  < last_volume_bass){
-          digitalWrite(13, LOW);
-       }
+    if (number_of_cicle == 16){
 
-        if ((medium_bass_value - (1200/last_volume_med) )  < last_volume_med){
+      if ((medium_bass_value - (1500/last_volume_bass) )  < last_volume_bass){
+      }
+
+      if ((medium_bass_value - (1200/last_volume_med) )  < last_volume_med){
           digitalWrite(12, LOW);
-       }
+      }
       number_of_cicle=0;
      }
 
-     if ((number_of_cicle%8) == 0){
-      last_volume_bass = medium_bass_value;
-      last_volume_med = medium_med_value;
-      
-      Serial.write(255); // send a start byte
-      Serial.write(fht_log_out, FHT_N/2); // send out the data
-     }
 
-     number_of_cicle++;
+      Serial.write(255); // send a start byte
+      fht_log_out[FHT_N/2-1] = last_volume_bass;
+      Serial.write(fht_log_out, (FHT_N/2)); // send out the data
+      number_of_cicle++;
 
      }
   }
