@@ -2,8 +2,9 @@
 *.d
 
 #libraries
-libraries/*
+*/libraries/*
 libraries/
+libraries/*
 
 #osx
 .DS_Store
