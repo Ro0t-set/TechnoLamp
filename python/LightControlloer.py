@@ -2,8 +2,8 @@ import tkinter as tk
 from enum import Enum
 import serial.tools.list_ports
 root = tk.Tk()
-tk.Entry(root, justify='center')
-root.geometry("400x300")
+root.geometry("200x220")
+
 root.title("Light Controller")
 
 parameter = Enum('Frequence', ['BASS', 'MEDIUM', 'STATUS'])
@@ -19,8 +19,7 @@ ports = serial.tools.list_ports.comports()
 #dropdown menu to select the port
 port = tk.StringVar(root)
 port.set(ports[0].device)
-port_menu = tk.OptionMenu(root, port, *ports, command=port_selected)
-port_menu.grid(row=0, column=2)
+
 
 
 
@@ -60,6 +59,11 @@ def on_off_switch_event():
 
 toggle_on__off_switch = tk.Button(text="OFF", width=10, command=on_off_switch_event)
 toggle_on__off_switch.grid(row=2, column=0, columnspan=2)
+
+
+port_menu = tk.OptionMenu(root, port, *ports, command=port_selected)
+port_menu.grid(row=3, column=0, columnspan=2)
+
 
 
 

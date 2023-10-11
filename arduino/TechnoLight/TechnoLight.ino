@@ -3,8 +3,8 @@
 #define MIN_BASS_RANGE 2
 #define MAX_BASS_RANGE 3
 
-#define MIN_MED_RANGE 8
-#define MAX_MED_RANGE 11
+#define MIN_MED_RANGE 6
+#define MAX_MED_RANGE 9
 
 
 #include <Arduino.h>
@@ -23,11 +23,11 @@ RotaryEncoder encoder(encoder_clk_s1, encoder_dt_s2, RotaryEncoder::LatchMode::T
 int prevClk;
 int prevDt;
 
-int last_volume_bass = 200;
-int last_volume_med = 100;
+int last_volume_bass = 0;
+int last_volume_med = 0;
 
 int bass_lower_bound = 70;
-int med_lower_bound = 50;
+int med_lower_bound = 10;
 
 void setup() {
   Serial.begin(115200);  // use the serial port
@@ -35,6 +35,7 @@ void setup() {
   ADCSRA = 0xe5;         // set the adc to free running mode
   ADMUX = 0x40;          // use adc0
   DIDR0 = 0x01;          // turn off the digital input for adc0
+
   pinMode(13, OUTPUT);
   pinMode(12, OUTPUT);
 
@@ -58,10 +59,10 @@ void encoder_handler3() {
     pos = newPos;
   }  // if
 
-  Serial.print("pos:");
-  Serial.print(pos);
-  Serial.print(" dir:");
-  Serial.println((int)(encoder.getDirection()));
+  //Serial.print("pos:");
+  //Serial.print(pos);
+  //Serial.print(" dir:");
+  //Serial.println((int)(encoder.getDirection()));
 
 } 
 
@@ -71,7 +72,7 @@ void encoder_handler3() {
 void loop() {
   while (1) {                          // reduces jitter
     cli();                             // UDRE interrupt slows this way down on arduino1.0
-    for (int i = 0; i < FHT_N; i++) {  // save 256 samples
+    for (int i = 0; i < FHT_N; i++) {  // save 256 samples FHT_N
       while (!(ADCSRA & 0x10))
         ;             // wait for adc to be ready
       ADCSRA = 0xf5;  // restart adc
@@ -93,18 +94,18 @@ void loop() {
     encoder_handler3();
 
     last_volume_bass = music_led_controller(MIN_BASS_RANGE, MAX_BASS_RANGE, bass_lower_bound, fht_log_out, last_volume_bass, 13, 1300);
-    last_volume_med = music_led_controller(MIN_BASS_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 1500);
+    last_volume_med = music_led_controller(MIN_MED_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 300);
 
 
 
-    /*
-         Serial.write(255); // send a start byte
-         fht_log_out[FHT_N / 2 - 2] = bass_lower_bound;
+    
+    Serial.write(255); // send a start byte
+    fht_log_out[FHT_N / 2 - 2] = bass_lower_bound;
 
-         fht_log_out[FHT_N / 2 - 1] = last_volume_bass;
-         Serial.write(fht_log_out, (FHT_N/2)); // send out the data
+    fht_log_out[FHT_N / 2 - 1] = last_volume_bass;
+    Serial.write(fht_log_out, (FHT_N/2)); // send out the data
       
-      */
+      
 
   }
 }
