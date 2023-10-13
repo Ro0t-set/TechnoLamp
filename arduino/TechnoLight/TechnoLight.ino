@@ -4,7 +4,7 @@
 #define MAX_BASS_RANGE 3
 
 #define MIN_MED_RANGE 6
-#define MAX_MED_RANGE 9
+#define MAX_MED_RANGE 8
 
 
 #include <Arduino.h>
@@ -14,22 +14,27 @@
 #include "switchController.h"
 
 
-int encoder_clk_s1 = 7;
-int encoder_dt_s2 = 5;
-int encoder_btn = 6;
+uint8_t encoder_clk_s1 = 5;
+uint8_t encoder_dt_s2 = 7;
+uint8_t encoder_btn = 6;
 
 RotaryEncoder encoder(encoder_clk_s1, encoder_dt_s2, RotaryEncoder::LatchMode::TWO03);
 
 int prevClk;
 int prevDt;
+bool btn_base_state = 1;
 
 int last_volume_bass = 0;
 int last_volume_med = 0;
 
 int bass_lower_bound = 70;
-int med_lower_bound = 10;
+int med_lower_bound = 60;
 
 char selected_encoder_value = 'B';
+
+uint8_t isOnLed = 8;
+uint8_t bassLed = 9;
+uint8_t medLed = 10;
 
 
 
@@ -44,14 +49,17 @@ void setup() {
   pinMode(13, OUTPUT);
   pinMode(12, OUTPUT);
 
-  pinMode(2, OUTPUT);
-  digitalWrite(2, HIGH);
+  pinMode(isOnLed, OUTPUT);
+  pinMode(bassLed, OUTPUT);
+  pinMode(medLed, OUTPUT);
 
+  digitalWrite(isOnLed, HIGH);
+
+  digitalWrite(bassLed, HIGH);
   encoder.setPosition(bass_lower_bound);
-
 }
 
-  
+
 void encoder_handler(int* selected_band, int* last_volume) {
   static int pos = 0;
   encoder.tick();
@@ -75,8 +83,7 @@ void encoder_handler(int* selected_band, int* last_volume) {
   //Serial.print(pos);
   //Serial.print(" dir:");
   //Serial.println((int)(encoder.getDirection()));
-
-} 
+}
 
 
 
@@ -86,15 +93,13 @@ void loop() {
     cli();                             // UDRE interrupt slows this way down on arduino1.0
     for (int i = 0; i < FHT_N; i++) {  // save 256 samples FHT_N
 
-    if(selected_encoder_value == 'B'){
-      encoder_handler(&bass_lower_bound, &last_volume_bass);
-      //Serial.print("BASS: ");
-      //Serial.println(bass_lower_bound);
-    }else if(selected_encoder_value == 'M'){
-      encoder_handler(&med_lower_bound, &last_volume_med);
-      //Serial.print("MED: ");
-      //Serial.println(med_lower_bound);
-    }
+      if (i % 16 == 0) {
+        if (selected_encoder_value == 'B') {
+          encoder_handler(&bass_lower_bound, &last_volume_bass);
+        } else if (selected_encoder_value == 'M') {
+          encoder_handler(&med_lower_bound, &last_volume_med);
+        }
+      }
 
 
       while (!(ADCSRA & 0x10))
@@ -115,36 +120,48 @@ void loop() {
 
 
     last_volume_bass = music_led_controller(MIN_BASS_RANGE, MAX_BASS_RANGE, bass_lower_bound, fht_log_out, last_volume_bass, 13, 1300);
-    last_volume_med = music_led_controller(MIN_MED_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 300);
+    last_volume_med = music_led_controller(MIN_MED_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 200);
 
 
-    if (digitalRead(encoder_btn) == 0){
-      if(selected_encoder_value == 'B'){
-        selected_encoder_value = 'M';
-        encoder.setPosition(med_lower_bound);
-      }else if(selected_encoder_value == 'M'){
-        selected_encoder_value = 'B';
-        encoder.setPosition(bass_lower_bound);
+
+    if (!btn_base_state && digitalRead(encoder_btn)) {
+      digitalWrite(bassLed, LOW);
+      digitalWrite(medLed, LOW);
+
+      switch (selected_encoder_value) {
+        case 'B':
+          {
+            digitalWrite(medLed, HIGH);
+            selected_encoder_value = 'M';
+            encoder.setPosition(med_lower_bound);
+            break;
+          }
+        case 'M':
+          {
+            digitalWrite(bassLed, HIGH);
+            selected_encoder_value = 'B';
+            encoder.setPosition(bass_lower_bound);
+            break;
+          }
       }
     }
 
-    if(selected_encoder_value == 'B'){
-      digitalWrite(2, HIGH);
-    }else{
-       digitalWrite(2, LOW);
-    }
+    btn_base_state = digitalRead(encoder_btn);
+
+    //Serial.println(btn_base_state);
 
 
 
 
-    
-    //Serial.write(255); // send a start byte
-    //fht_log_out[FHT_N / 2 - 2] = bass_lower_bound;
 
-   //fht_log_out[FHT_N / 2 - 1] = last_volume_bass;
-    //Serial.write(fht_log_out, (FHT_N/2)); // send out the data
-      
-      
 
+
+    Serial.write(255); // send a start byte
+    fht_log_out[FHT_N / 2 - 2] = bass_lower_bound;
+    fht_log_out[FHT_N / 2 - 1] = last_volume_bass;
+
+    fht_log_out[FHT_N / 2 - 3] = med_lower_bound;
+    fht_log_out[FHT_N / 2 - 4] = last_volume_med;
+    Serial.write(fht_log_out, (FHT_N/2)); // send out the data
   }
 }
