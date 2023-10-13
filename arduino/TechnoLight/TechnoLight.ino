@@ -3,8 +3,8 @@
 #define MIN_BASS_RANGE 2
 #define MAX_BASS_RANGE 3
 
-#define MIN_MED_RANGE 6
-#define MAX_MED_RANGE 8
+#define MIN_MED_RANGE 4
+#define MAX_MED_RANGE 6
 
 
 #include <Arduino.h>
@@ -27,6 +27,8 @@ bool btn_base_state = 1;
 int last_volume_bass = 0;
 int last_volume_med = 0;
 
+int prev_bass_lower_bound = 70;
+int prev_med_lower_bound = 60;
 int bass_lower_bound = 70;
 int med_lower_bound = 60;
 
@@ -60,7 +62,7 @@ void setup() {
 }
 
 
-void encoder_handler(int* selected_band, int* last_volume) {
+void encoder_handler(int* selected_band, int* last_volume, char* selected_encoder_value) {
   static int pos = 0;
   encoder.tick();
 
@@ -74,9 +76,21 @@ void encoder_handler(int* selected_band, int* last_volume) {
     encoder.setPosition(newPos);
   }
   if (pos != newPos) {
+    if (*selected_encoder_value == 'O') {
+      if (pos < newPos) {
+        digitalWrite(isOnLed, HIGH);
+      } else {
+        digitalWrite(isOnLed, LOW);
+        digitalWrite(13, LOW);
+        digitalWrite(12, LOW);
+      }
+    } else {
+
+      *selected_band = newPos;
+      *last_volume = newPos;
+    }
+
     pos = newPos;
-    *selected_band = newPos;
-    *last_volume = newPos;
   }  // if
 
   //Serial.print("pos:");
@@ -95,9 +109,11 @@ void loop() {
 
       if (i % 16 == 0) {
         if (selected_encoder_value == 'B') {
-          encoder_handler(&bass_lower_bound, &last_volume_bass);
+          encoder_handler(&bass_lower_bound, &last_volume_bass, &selected_encoder_value);
         } else if (selected_encoder_value == 'M') {
-          encoder_handler(&med_lower_bound, &last_volume_med);
+          encoder_handler(&med_lower_bound, &last_volume_med, &selected_encoder_value);
+        } else {
+          encoder_handler(0, 0, &selected_encoder_value);
         }
       }
 
@@ -118,9 +134,11 @@ void loop() {
     fht_mag_log();  // take the output of the fht
     sei();
 
+    if (digitalRead(isOnLed)) {
+      last_volume_bass = music_led_controller(MIN_BASS_RANGE, MAX_BASS_RANGE, bass_lower_bound, fht_log_out, last_volume_bass, 13, 1600);
+      last_volume_med = music_led_controller(MIN_MED_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 200);
+    }
 
-    last_volume_bass = music_led_controller(MIN_BASS_RANGE, MAX_BASS_RANGE, bass_lower_bound, fht_log_out, last_volume_bass, 13, 1300);
-    last_volume_med = music_led_controller(MIN_MED_RANGE, MAX_MED_RANGE, med_lower_bound, fht_log_out, last_volume_med, 12, 200);
 
 
 
@@ -131,9 +149,10 @@ void loop() {
       switch (selected_encoder_value) {
         case 'B':
           {
+            digitalWrite(bassLed, HIGH);
             digitalWrite(medLed, HIGH);
-            selected_encoder_value = 'M';
-            encoder.setPosition(med_lower_bound);
+            selected_encoder_value = 'O';
+
             break;
           }
         case 'M':
@@ -141,6 +160,14 @@ void loop() {
             digitalWrite(bassLed, HIGH);
             selected_encoder_value = 'B';
             encoder.setPosition(bass_lower_bound);
+            break;
+          }
+        case 'O':
+          {
+            digitalWrite(medLed, HIGH);
+            digitalWrite(bassLed, LOW);
+            selected_encoder_value = 'M';
+            encoder.setPosition(med_lower_bound);
             break;
           }
       }
@@ -155,7 +182,7 @@ void loop() {
 
 
 
-
+    
     Serial.write(255); // send a start byte
     fht_log_out[FHT_N / 2 - 2] = bass_lower_bound;
     fht_log_out[FHT_N / 2 - 1] = last_volume_bass;
@@ -163,5 +190,6 @@ void loop() {
     fht_log_out[FHT_N / 2 - 3] = med_lower_bound;
     fht_log_out[FHT_N / 2 - 4] = last_volume_med;
     Serial.write(fht_log_out, (FHT_N/2)); // send out the data
+    
   }
 }
